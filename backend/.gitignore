@@ -1,0 +1,13 @@
+node_modules/
+
+# SQLite database and WAL/SHM journal files
+# db.js creates carecue.db (not .sqlite) so both extensions are excluded.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+
+# Local environment overrides
+.env
