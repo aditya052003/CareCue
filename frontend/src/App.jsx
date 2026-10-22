@@ -12,6 +12,7 @@ const API_BASE_URL = (
 
 const CHECKINS_URL = `${API_BASE_URL}/api/checkins`;
 const CHAT_URL = `${API_BASE_URL}/api/chat`;
+const MCP_TOOL_URL = `${API_BASE_URL}/api/mcp/tool`;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -62,52 +63,130 @@ function ChatPanel({ onCheckInsChanged }) {
     setMessages((prev) => [...prev, { id: Date.now() + Math.random(), ...msg }]);
   }
 
-  async function send() {
-    const text = input.trim();
-    if (!text || sending) return;
+async function send() {
+  const text = input.trim();
+  if (!text || sending) return;
 
-    setInput("");
-    setError("");
+  setInput("");
+  setError("");
+  appendMessage({ role: "user", text });
+  setSending(true);
 
-    // Append the user bubble immediately.
-    appendMessage({ role: "user", text });
-    setSending(true);
+  try {
+    const lower = text.toLowerCase();
 
-    try {
-      const response = await fetch(CHAT_URL, {
-        method:  "POST",
+    // Decide whether the user explicitly requested an MCP action.
+    let toolName = null;
+    let toolArguments = {};
+
+    if (
+      /\b(show|list|view|display)\b/.test(lower) &&
+      /\b(check-?ins?|schedule|family)\b/.test(lower)
+    ) {
+      toolName = "list_checkins";
+    }
+
+    // Keep create/complete requests on the existing chat for now.
+    // This avoids sending incorrectly parsed arguments to MCP.
+    if (/\b(add|create|schedule)\b/.test(lower) &&
+        /\b(check-?in)\b/.test(lower)) {
+      toolName = null;
+    }
+
+    if (/\b(complete|finish|mark done)\b/.test(lower)) {
+      toolName = null;
+    }
+
+    if (toolName) {
+      const response = await fetch(MCP_TOOL_URL, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body:    JSON.stringify({ message: text }),
+        body: JSON.stringify({
+          name: toolName,
+          arguments: toolArguments,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.message || "The assistant could not process your request.");
+        throw new Error(
+          data.message || "The MCP tool could not process your request."
+        );
+      }
+
+      const contentText = data.result?.content?.find(
+        (item) => item.type === "text"
+      )?.text;
+
+      if (!contentText) {
+        throw new Error("The MCP server returned an empty result.");
+      }
+
+      let parsed;
+      try {
+        parsed = JSON.parse(contentText);
+      } catch {
+        parsed = contentText;
+      }
+
+      const checkIns = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.checkIns)
+          ? parsed.checkIns
+          : [];
+
+      appendMessage({
+        role: "assistant",
+        text: `Retrieved ${checkIns.length} check-in(s) using the remote CareCue MCP server.`,
+        mode: "mcp",
+        results: [
+          {
+            action: "list_checkins",
+            checkIns,
+          },
+        ],
+      });
+    } else {
+      // Preserve existing chat behavior for other requests.
+      const response = await fetch(CHAT_URL, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: text }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(
+          data.message || "The assistant could not process your request."
+        );
       }
 
       appendMessage({
-        role:    "assistant",
-        text:    data.reply,
-        mode:    data.mode,
+        role: "assistant",
+        text: data.reply,
+        mode: data.mode,
         results: data.results ?? [],
       });
 
-      // If the assistant mutated any check-ins, refresh the dashboard.
       const mutating = ["create_checkin", "complete_checkin"];
       const didMutate = (data.results ?? []).some(
         (r) => mutating.includes(r.action) && !r.error
       );
-      if (didMutate) onCheckInsChanged();
 
-    } catch (err) {
-      setError(err.message || "Could not reach the CareCue backend.");
-    } finally {
-      setSending(false);
-      // Return focus to the input after the response lands.
-      inputRef.current?.focus();
+      if (didMutate) onCheckInsChanged();
     }
+  } catch (err) {
+    setError(err.message || "Could not reach the CareCue backend.");
+  } finally {
+    setSending(false);
+    inputRef.current?.focus();
   }
+}
+
+
+
 
   function handleKeyDown(e) {
     // Enter sends; Shift+Enter inserts a newline.

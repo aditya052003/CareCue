@@ -7,6 +7,8 @@ require("dotenv").config();
 
 const { chat } = require("./ai");
 
+const { callCareCueMcpTool } = require("./remote-mcp");
+
 // --------------------------------------------------
 // Storage adapter selection
 // --------------------------------------------------
@@ -296,6 +298,45 @@ app.post("/api/chat", async (req, res) => {
     mode: aiResult.mode,
     results,
   });
+});
+
+// --------------------------------------------------
+// POST /api/mcp/tool — securely call remote MCP tools
+// --------------------------------------------------
+
+app.post("/api/mcp/tool", async (req, res) => {
+  const { name, arguments: toolArguments = {} } = req.body || {};
+
+  const allowedTools = [
+    "list_checkins",
+    "create_checkin",
+    "complete_checkin",
+  ];
+
+  if (!allowedTools.includes(name)) {
+    return res.status(400).json({
+      message: "Unsupported MCP tool.",
+    });
+  }
+
+  try {
+    const result = await callCareCueMcpTool(name, toolArguments);
+
+    if (result.isError) {
+      return res.status(502).json({
+        message: "The MCP tool returned an error.",
+        result,
+      });
+    }
+
+    res.json({ result });
+  } catch (error) {
+    console.error("[/api/mcp/tool] MCP call failed:", error.message);
+
+    res.status(502).json({
+      message: "Could not call the remote MCP tool.",
+    });
+  }
 });
 
 // --------------------------------------------------

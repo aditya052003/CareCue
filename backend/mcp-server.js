@@ -12,8 +12,16 @@ const { z } = require("zod");
 const app = express();
 app.use(express.json());
 
-const API_URL = "http://localhost:5000";
-const PORT = 5001;
+const API_URL = (
+  process.env.CARECUE_API_URL || "http://localhost:5000"
+).replace(/\/$/, "");
+
+const endpoint = process.env.AWS_LAMBDA_HTTP_ENDPOINT;
+
+const HOST = endpoint ? endpoint.split(":")[0] : "0.0.0.0";
+const PORT = endpoint
+  ? Number(endpoint.split(":")[1])
+  : Number(process.env.PORT || 5001);
 
 function createCareCueMcpServer() {
   const server = new McpServer({
@@ -168,6 +176,6 @@ app.delete("/mcp", (req, res) => {
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`CareCue MCP server running on http://localhost:${PORT}/mcp`);
+app.listen(PORT, HOST, () => {
+  console.log(`CareCue MCP server running on http://${HOST}:${PORT}/mcp`);
 });
