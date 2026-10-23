@@ -1,6 +1,0 @@
-node_modules/
-
-# SQLite database and WAL/SHM journal files
-*.sqlite
-*.sqlite-wal
-*.sqlite-shm
