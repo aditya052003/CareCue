@@ -21,9 +21,8 @@ const http   = require("http");
 const Module = require("module");
 const path   = require("path");
 
-// ---------------------------------------------------------------------------
+
 // Minimal test runner
-// ---------------------------------------------------------------------------
 
 let passed   = 0;
 let failed   = 0;
@@ -47,9 +46,9 @@ function section(title) {
   console.log("-".repeat(title.length));
 }
 
-// ---------------------------------------------------------------------------
+
 // HTTP helper (port comes from a live testServer variable set per-suite)
-// ---------------------------------------------------------------------------
+
 
 let activePort;
 
@@ -82,13 +81,13 @@ function req(method, urlPath, body) {
   });
 }
 
-// ---------------------------------------------------------------------------
+
 // In-memory stub adapters
 //
 // Both expose the same { dbGetAll, dbCreate, dbComplete } interface.
 // syncStub returns plain values; asyncStub wraps them in Promises.
 // server.js awaits every call, so both must work correctly.
-// ---------------------------------------------------------------------------
+
 
 function makeSyncStub() {
   const SEED = [
@@ -123,7 +122,6 @@ function makeAsyncStub() {
   };
 }
 
-// ---------------------------------------------------------------------------
 // App factory
 //
 // Builds a fresh Express app by loading server.js with its db require
@@ -134,7 +132,7 @@ function makeAsyncStub() {
 //   - Does not mutate require.cache of already-loaded modules
 //   - Leaves ai.js, express, etc. unchanged
 //   - Is fully reset between the two adapter suites
-// ---------------------------------------------------------------------------
+
 
 function buildAppWithStub(stub, label) {
   // Resolve the canonical path that server.js would request.
@@ -178,11 +176,11 @@ function buildAppWithStub(stub, label) {
   return appExports.app;
 }
 
-// ---------------------------------------------------------------------------
+
 // Shared contract tests
 //
 // Run against any app instance; expectations are identical for both adapters.
-// ---------------------------------------------------------------------------
+
 
 async function runContractTests(label) {
   section(label + " -- health check");
@@ -326,12 +324,12 @@ async function runContractTests(label) {
   });
 }
 
-// ---------------------------------------------------------------------------
+
 // Run both adapter suites
-// ---------------------------------------------------------------------------
+
 
 async function runAll() {
-  // ── Suite 1: synchronous stub (SQLite shape) ──────────────────────────────
+  // ── Suite 1: synchronous stub (SQLite shape)
   {
     const syncLabel = "Sync adapter (SQLite shape)";
     console.log("\n" + "=".repeat(50));
@@ -352,7 +350,7 @@ async function runAll() {
     }
   }
 
-  // ── Suite 2: async stub (DynamoDB shape) ──────────────────────────────────
+  // ── Suite 2: async stub (DynamoDB shape)
   {
     const asyncLabel = "Async adapter (DynamoDB shape)";
     console.log("\n" + "=".repeat(50));
@@ -373,7 +371,8 @@ async function runAll() {
     }
   }
 
-  // ── Summary ───────────────────────────────────────────────────────────────
+  // ── Summary
+
   console.log("\n" + "=".repeat(50));
   if (failed === 0) {
     console.log("All " + passed + " adapter contract tests passed.");

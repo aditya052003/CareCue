@@ -9,9 +9,9 @@ const { chat } = require("./ai");
 
 const { callCareCueMcpTool } = require("./remote-mcp");
 
-// --------------------------------------------------
+
 // Storage adapter selection
-// --------------------------------------------------
+
 
 const useDynamoDB = process.env.CARECUE_STORAGE === "dynamodb";
 
@@ -29,18 +29,18 @@ if (useDynamoDB) {
   console.log("[CareCue] Storage: SQLite");
 }
 
-// --------------------------------------------------
+
 // Express application
-// --------------------------------------------------
+
 
 const app = express();
 
 app.use(cors());
 app.use(express.json());
 
-// --------------------------------------------------
+
 // Create a check-in
-// --------------------------------------------------
+
 
 async function createCheckIn(name, person, time) {
   if (
@@ -77,9 +77,9 @@ async function createCheckIn(name, person, time) {
   }
 }
 
-// --------------------------------------------------
+
 // Complete a check-in
-// --------------------------------------------------
+
 
 async function completeCheckIn(id) {
   try {
@@ -105,9 +105,9 @@ async function completeCheckIn(id) {
   }
 }
 
-// --------------------------------------------------
+
 // Health check
-// --------------------------------------------------
+
 
 app.get("/", (req, res) => {
   res.json({
@@ -116,9 +116,9 @@ app.get("/", (req, res) => {
   });
 });
 
-// --------------------------------------------------
+
 // GET /api/checkins
-// --------------------------------------------------
+
 
 app.get("/api/checkins", async (req, res) => {
   try {
@@ -133,9 +133,9 @@ app.get("/api/checkins", async (req, res) => {
   }
 });
 
-// --------------------------------------------------
+
 // POST /api/checkins
-// --------------------------------------------------
+
 
 app.post("/api/checkins", async (req, res) => {
   const { name, person, time } = req.body || {};
@@ -154,9 +154,9 @@ app.post("/api/checkins", async (req, res) => {
   });
 });
 
-// --------------------------------------------------
+
 // PATCH /api/checkins/:id/complete
-// --------------------------------------------------
+
 
 app.patch("/api/checkins/:id/complete", async (req, res) => {
   const result = await completeCheckIn(req.params.id);
@@ -173,9 +173,9 @@ app.patch("/api/checkins/:id/complete", async (req, res) => {
   });
 });
 
-// --------------------------------------------------
+
 // POST /api/chat
-// --------------------------------------------------
+
 
 app.post("/api/chat", async (req, res) => {
   const { message } = req.body || {};
@@ -300,9 +300,9 @@ app.post("/api/chat", async (req, res) => {
   });
 });
 
-// --------------------------------------------------
+
 // POST /api/mcp/tool — securely call remote MCP tools
-// --------------------------------------------------
+
 
 app.post("/api/mcp/tool", async (req, res) => {
   const { name, arguments: toolArguments = {} } = req.body || {};
@@ -339,9 +339,9 @@ app.post("/api/mcp/tool", async (req, res) => {
   }
 });
 
-// --------------------------------------------------
+
 // Start server
-// --------------------------------------------------
+
 
 // Lambda Web Functions supplies AWS_LAMBDA_HTTP_ENDPOINT.
 // When absent, use localhost and PORT for local development.

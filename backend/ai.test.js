@@ -17,9 +17,9 @@ const assert = require("assert");
 const { fallback, validateAction, parseTime, parsePerson, parseName } =
   require("./ai");
 
-// ---------------------------------------------------------------------------
+
 // Minimal test runner
-// ---------------------------------------------------------------------------
+
 
 let passed = 0;
 let failed = 0;
@@ -43,9 +43,9 @@ function section(title) {
   console.log("-".repeat(title.length));
 }
 
-// ---------------------------------------------------------------------------
+
 // Assertion helpers
-// ---------------------------------------------------------------------------
+
 
 function assertAction(result, expectedType, extraFields) {
   extraFields = extraFields || {};
@@ -72,9 +72,9 @@ function assertNoActions(result) {
   );
 }
 
-// ===========================================================================
+
 // parseTime
-// ===========================================================================
+
 section("parseTime");
 
 test("8pm -> 20:00", function () {
@@ -117,9 +117,9 @@ test("returns null for out-of-range hours in 24h (25:00)", function () {
   assert.ok(result === null || typeof result === "string", "should return null or string without throwing");
 });
 
-// ===========================================================================
+
 // parsePerson
-// ===========================================================================
+
 section("parsePerson");
 
 test("'dad' -> 'Dad'", function () {
@@ -150,9 +150,9 @@ test("returns null when no person keyword present", function () {
   assert.strictEqual(parsePerson("add a check-in at 8pm"), null);
 });
 
-// ===========================================================================
+
 // parseName
-// ===========================================================================
+
 section("parseName");
 
 test("quoted name is used verbatim", function () {
@@ -194,9 +194,9 @@ test("no time, no person -> generic fallback", function () {
   assert.strictEqual(parseName("add a check-in", null, null), "Check-in");
 });
 
-// ===========================================================================
+
 // validateAction
-// ===========================================================================
+
 section("validateAction");
 
 test("list_checkins passes through cleanly", function () {
@@ -311,9 +311,9 @@ test("non-object input throws", function () {
   );
 });
 
-// ===========================================================================
+
 // fallback() -- intent routing
-// ===========================================================================
+
 section("fallback() -- greetings");
 
 test("'hi' triggers greeting", function () {
@@ -536,9 +536,9 @@ test("empty string returns a non-empty reply without throwing", function () {
   assert.ok(r.reply.length > 0, "reply should not be empty");
 });
 
-// ===========================================================================
+
 // Summary
-// ===========================================================================
+
 
 console.log("\n" + "=".repeat(50));
 if (failed === 0) {

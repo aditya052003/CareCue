@@ -33,9 +33,9 @@
 
 "use strict";
 
-// ---------------------------------------------------------------------------
+
 // Feature flag
-// ---------------------------------------------------------------------------
+
 
 /**
  * Set CARECUE_USE_BEDROCK=true in your environment to opt in to Bedrock.
@@ -45,9 +45,9 @@ const USE_BEDROCK =
   process.env.CARECUE_USE_BEDROCK === "true" ||
   process.env.CARECUE_USE_BEDROCK === "1";
 
-// ---------------------------------------------------------------------------
+
 // Optional Bedrock import
-// ---------------------------------------------------------------------------
+
 
 let BedrockRuntimeClient = null;
 let InvokeModelCommand = null;
@@ -66,9 +66,9 @@ if (USE_BEDROCK) {
   }
 }
 
-// ---------------------------------------------------------------------------
+
 // Action validation
-// ---------------------------------------------------------------------------
+
 
 const HH_MM = /^([01]\d|2[0-3]):[0-5]\d$/;
 
@@ -141,9 +141,9 @@ function validateAction(raw) {
   }
 }
 
-// ---------------------------------------------------------------------------
+
 // Bedrock inference
-// ---------------------------------------------------------------------------
+
 
 const BEDROCK_MODEL_ID =
   process.env.BEDROCK_MODEL_ID || "anthropic.claude-3-haiku-20240307-v1:0";
@@ -229,9 +229,9 @@ async function callBedrock(message, context) {
   return { reply: parsed.reply, actions: validatedActions, mode: "bedrock" };
 }
 
-// ---------------------------------------------------------------------------
+
 // Rule-based fallback
-// ---------------------------------------------------------------------------
+
 
 // Intent patterns
 const RE_GREETING  = /^(hi|hello|hey|good\s+(morning|afternoon|evening)|howdy)\b/i;
@@ -261,9 +261,9 @@ const RE_PERSON = new RegExp(
   "i"
 );
 
-// ---------------------------------------------------------------------------
+//
 // Parsers
-// ---------------------------------------------------------------------------
+
 
 /**
  * Extract a positive integer ID from the message.
@@ -368,9 +368,8 @@ function displayTime(hhmm) {
   return dh + ":" + mStr + " " + ampm;
 }
 
-// ---------------------------------------------------------------------------
 // Fallback engine
-// ---------------------------------------------------------------------------
+
 
 /**
  * Deterministic rule-based chat handler.
@@ -504,9 +503,9 @@ function fallback(message) {
   };
 }
 
-// ---------------------------------------------------------------------------
+
 // Public API
-// ---------------------------------------------------------------------------
+
 
 /**
  * chat(message, context?)

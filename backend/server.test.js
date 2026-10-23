@@ -41,9 +41,9 @@ const os           = require("os");
 const path         = require("path");
 const { spawnSync } = require("child_process");
 
-// ---------------------------------------------------------------------------
+
 // Point the DB at a temp file BEFORE requiring anything that opens it.
-// ---------------------------------------------------------------------------
+
 
 const TEMP_DB = path.join(os.tmpdir(), "carecue-test-" + Date.now() + ".sqlite");
 process.env.DB_PATH = TEMP_DB;
@@ -52,9 +52,8 @@ process.env.DB_PATH = TEMP_DB;
 const { app }        = require("./server");
 const { dbClose }    = require("./db");
 
-// ---------------------------------------------------------------------------
+
 // Minimal async test runner
-// ---------------------------------------------------------------------------
 
 let passed   = 0;
 let failed   = 0;
@@ -78,9 +77,9 @@ function section(title) {
   console.log("-".repeat(title.length));
 }
 
-// ---------------------------------------------------------------------------
+
 // HTTP helper
-// ---------------------------------------------------------------------------
+
 
 let testServer;
 
@@ -113,15 +112,15 @@ function request(method, urlPath, body) {
   });
 }
 
-// ---------------------------------------------------------------------------
+
 // Tests
-// ---------------------------------------------------------------------------
+
 
 async function runTests() {
 
-  // =========================================================================
+  //
   section("Health check");
-  // =========================================================================
+  //
 
   await test("GET / returns status OK", async () => {
     const { status, body } = await request("GET", "/");
@@ -129,9 +128,9 @@ async function runTests() {
     assert.strictEqual(body.status, "OK");
   });
 
-  // =========================================================================
+  //
   section("GET /api/checkins");
-  // =========================================================================
+  //
 
   await test("returns an array", async () => {
     const { status, body } = await request("GET", "/api/checkins");
@@ -144,9 +143,9 @@ async function runTests() {
     assert.strictEqual(body.length, 3, "expected 3 seed records, got " + body.length);
   });
 
-  // =========================================================================
+  //
   section("POST /api/checkins");
-  // =========================================================================
+  //
 
   await test("creates a check-in and returns 201", async () => {
     const { status, body } = await request("POST", "/api/checkins", {
@@ -174,9 +173,9 @@ async function runTests() {
     assert.strictEqual(status, 400);
   });
 
-  // =========================================================================
+  //
   section("PATCH /api/checkins/:id/complete");
-  // =========================================================================
+  //
 
   await test("marks seed check-in 2 as completed", async () => {
     const { status, body } = await request("PATCH", "/api/checkins/2/complete");
@@ -197,9 +196,9 @@ async function runTests() {
     assert.strictEqual(status, 404);
   });
 
-  // =========================================================================
+  //
   section("POST /api/chat -- input validation");
-  // =========================================================================
+  //
 
   await test("returns 400 for empty body", async () => {
     const { status } = await request("POST", "/api/chat", {});
@@ -216,9 +215,9 @@ async function runTests() {
     assert.strictEqual(status, 400);
   });
 
-  // =========================================================================
+  //
   section("POST /api/chat -- intents");
-  // =========================================================================
+  //
 
   await test("greeting: non-empty reply, fallback mode, no results", async () => {
     const { status, body } = await request("POST", "/api/chat", { message: "hi" });
@@ -317,9 +316,9 @@ async function runTests() {
     assert.match(body.reply, /not sure|try asking|help/i);
   });
 
-  // =========================================================================
+  //
   section("Persistence -- check-in survives a backend restart");
-  // =========================================================================
+  //
 
   await test("record created in process A is readable in a fresh process B", async () => {
     // Step 1: create a uniquely-named check-in in this process via the REST API.
@@ -359,9 +358,9 @@ async function runTests() {
   });
 }
 
-// ---------------------------------------------------------------------------
+//
 // Bootstrap
-// ---------------------------------------------------------------------------
+//
 
 testServer = app.listen(0, "127.0.0.1", async () => {
   const { port } = testServer.address();

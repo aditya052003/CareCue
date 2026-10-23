@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import "./App.css";
 
-// ---------------------------------------------------------------------------
+
 // With the Vite proxy configured, /api/* is forwarded to localhost:5000.
+
 // Keeping the URL relative means the frontend never needs a hardcoded port.
-// ---------------------------------------------------------------------------
+
 
 const API_BASE_URL = (
   import.meta.env.VITE_API_URL || ""
@@ -14,11 +15,10 @@ const CHECKINS_URL = `${API_BASE_URL}/api/checkins`;
 const CHAT_URL = `${API_BASE_URL}/api/chat`;
 const MCP_TOOL_URL = `${API_BASE_URL}/api/mcp/tool`;
 
-// ---------------------------------------------------------------------------
 // Helpers
-// ---------------------------------------------------------------------------
 
 /** Format "20:00" -> "8:00 PM" for display inside chat result cards. */
+
 function fmt24(hhmm) {
   if (!hhmm || !hhmm.includes(":")) return hhmm;
   const [hStr, mStr] = hhmm.split(":");
@@ -28,9 +28,9 @@ function fmt24(hhmm) {
   return dh + ":" + mStr + " " + ampm;
 }
 
-// ---------------------------------------------------------------------------
+
 // ChatPanel
-// ---------------------------------------------------------------------------
+
 
 /**
  * Self-contained conversational panel.
@@ -38,6 +38,7 @@ function fmt24(hhmm) {
  *   onCheckInsChanged() -- called after an action mutates check-in data
  *                          so the dashboard stats stay in sync.
  */
+
 function ChatPanel({ onCheckInsChanged }) {
   const [messages, setMessages]   = useState([
     {
@@ -55,6 +56,7 @@ function ChatPanel({ onCheckInsChanged }) {
   const inputRef                  = useRef(null);
 
   // Scroll to the latest message whenever messages change.
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -63,129 +65,209 @@ function ChatPanel({ onCheckInsChanged }) {
     setMessages((prev) => [...prev, { id: Date.now() + Math.random(), ...msg }]);
   }
 
+
 async function send() {
-  const text = input.trim();
-  if (!text || sending) return;
+    const text = input.trim();
+    if (!text || sending) return;
 
-  setInput("");
-  setError("");
-  appendMessage({ role: "user", text });
-  setSending(true);
+    setInput("");
+    setError("");
+    appendMessage({ role: "user", text });
+    setSending(true);
 
-  try {
-    const lower = text.toLowerCase();
+    try {
+      const lower = text.toLowerCase();
+      let toolName = null;
+      let toolArguments = {};
 
-    // Decide whether the user explicitly requested an MCP action.
-    let toolName = null;
-    let toolArguments = {};
+      // Detect the requested action using simple keyword rules.
 
-    if (
-      /\b(show|list|view|display)\b/.test(lower) &&
-      /\b(check-?ins?|schedule|family)\b/.test(lower)
-    ) {
-      toolName = "list_checkins";
-    }
+      const listRequest =
+        /\b(show|list|view|display)\b/.test(lower) &&
+        /\b(check-?ins?|schedule|family)\b/.test(lower);
 
-    // Keep create/complete requests on the existing chat for now.
-    // This avoids sending incorrectly parsed arguments to MCP.
-    if (/\b(add|create|schedule)\b/.test(lower) &&
-        /\b(check-?in)\b/.test(lower)) {
-      toolName = null;
-    }
+      const completeRequest =
+        /\b(complete|finish|mark)\b/.test(lower) &&
+        /\b(check-?in|done|completed)\b/.test(lower);
 
-    if (/\b(complete|finish|mark done)\b/.test(lower)) {
-      toolName = null;
-    }
+      const createRequest =
+        /\b(add|create|schedule)\b/.test(lower) &&
+        /\bcheck-?in\b/.test(lower);
 
-    if (toolName) {
-      const response = await fetch(MCP_TOOL_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: toolName,
-          arguments: toolArguments,
-        }),
-      });
+      if (listRequest) {
+        toolName = "list_checkins";
+      } else if (createRequest) {
 
-      const data = await response.json();
+        // A create command needs both a family member and a time.
 
-      if (!response.ok) {
-        throw new Error(
-          data.message || "The MCP tool could not process your request."
+        const personMatch = text.match(
+          /\bfor\s+(Dad|Mom|Father|Mother|Grandma|Grandpa)\b/i
         );
-      }
-
-      const contentText = data.result?.content?.find(
-        (item) => item.type === "text"
-      )?.text;
-
-      if (!contentText) {
-        throw new Error("The MCP server returned an empty result.");
-      }
-
-      let parsed;
-      try {
-        parsed = JSON.parse(contentText);
-      } catch {
-        parsed = contentText;
-      }
-
-      const checkIns = Array.isArray(parsed)
-        ? parsed
-        : Array.isArray(parsed.checkIns)
-          ? parsed.checkIns
-          : [];
-
-      appendMessage({
-        role: "assistant",
-        text: `Retrieved ${checkIns.length} check-in(s) using the remote CareCue MCP server.`,
-        mode: "mcp",
-        results: [
-          {
-            action: "list_checkins",
-            checkIns,
-          },
-        ],
-      });
-    } else {
-      // Preserve existing chat behavior for other requests.
-      const response = await fetch(CHAT_URL, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: text }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(
-          data.message || "The assistant could not process your request."
+        const timeMatch = text.match(
+          /\bat\s+(\d{1,2})(?::(\d{2}))?\s*(am|pm)\b/i
         );
+
+        if (!personMatch || !timeMatch) {
+          throw new Error(
+            "Please include a family member and time, e.g. “Add a check-in for Dad at 8 pm.”"
+          );
+        }
+
+        let hour = Number(timeMatch[1]);
+        const minute = Number(timeMatch[2] || "00");
+        const period = timeMatch[3].toLowerCase();
+
+        if (hour < 1 || hour > 12 || minute > 59) {
+          throw new Error("Please enter a valid time, such as 8 pm.");
+        }
+
+        if (period === "pm" && hour !== 12) hour += 12;
+        if (period === "am" && hour === 12) hour = 0;
+
+        const person = personMatch[1];
+        toolName = "create_checkin";
+        toolArguments = {
+          name: `${person}'s check-in`,
+          person,
+          time: `${String(hour).padStart(2, "0")}:${String(minute).padStart(2, "0")}`,
+        };
+      } else if (completeRequest) {
+
+        // MCP expects the numeric ID of the check-in to complete.
+
+        const idMatch = text.match(
+          /\b(?:complete|finish|mark)\s+(?:check-?in\s*)?#?(\d+)\b/i
+        );
+
+        if (!idMatch) {
+          throw new Error(
+            "Please include the numeric check-in ID, e.g. “Complete check-in 123.”"
+          );
+        }
+
+        const id = Number(idMatch[1]);
+        if (!Number.isSafeInteger(id) || id <= 0) {
+          throw new Error("That check-in ID is invalid.");
+        }
+
+        toolName = "complete_checkin";
+        toolArguments = { id };
       }
 
-      appendMessage({
-        role: "assistant",
-        text: data.reply,
-        mode: data.mode,
-        results: data.results ?? [],
-      });
+      if (toolName) {
 
-      const mutating = ["create_checkin", "complete_checkin"];
-      const didMutate = (data.results ?? []).some(
-        (r) => mutating.includes(r.action) && !r.error
-      );
+        // Send the action to the remote MCP tools through the backend.
 
-      if (didMutate) onCheckInsChanged();
+        const response = await fetch(MCP_TOOL_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: toolName,
+            arguments: toolArguments,
+          }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          console.error("MCP request failed:", response.status, data);
+          throw new Error(
+            data.message ||
+            data.error ||
+            `MCP request failed with HTTP ${response.status}.`
+          );
+        }
+
+        if (data.isError || data.result?.isError) {
+          const errorText = data.result?.content
+            ?.find((item) => item.type === "text")?.text;
+          throw new Error(errorText || "The MCP tool could not complete the request.");
+        }
+
+        const contentText = data.result?.content?.find(
+          (item) => item.type === "text"
+        )?.text;
+
+        if (!contentText) {
+          throw new Error("The MCP server returned an empty result.");
+        }
+
+        let parsed;
+        try {
+          parsed = JSON.parse(contentText);
+        } catch {
+          parsed = contentText;
+        }
+
+        if (toolName === "list_checkins") {
+          const checkIns = Array.isArray(parsed)
+            ? parsed
+            : Array.isArray(parsed.checkIns)
+              ? parsed.checkIns
+              : [];
+
+          appendMessage({
+            role: "assistant",
+            text: `Retrieved ${checkIns.length} check-in(s) using the remote CareCue MCP server.`,
+            mode: "mcp",
+            results: [{ action: "list_checkins", checkIns }],
+          });
+        } else if (toolName === "create_checkin") {
+          appendMessage({
+            role: "assistant",
+            text: `Created "${parsed.name}" for ${parsed.person} at ${fmt24(parsed.time)}.`,
+            mode: "mcp",
+            results: [{ action: "create_checkin", checkIn: parsed }],
+          });
+          onCheckInsChanged();
+        } else if (toolName === "complete_checkin") {
+          appendMessage({
+            role: "assistant",
+            text: `MCP result: ${parsed.name || "Check-in"} marked complete.`,
+            mode: "mcp",
+            results: [{ action: "complete_checkin", checkIn: parsed }],
+          });
+          onCheckInsChanged();
+        }
+      } else {
+
+        // Preserve the existing rule-based chat for other questions.
+
+        const response = await fetch(CHAT_URL, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ message: text }),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+          throw new Error(
+            data.message || "The assistant could not process your request."
+          );
+        }
+
+        appendMessage({
+          role: "assistant",
+          text: data.reply,
+          mode: data.mode,
+          results: data.results ?? [],
+        });
+
+        const mutating = ["create_checkin", "complete_checkin"];
+        const didMutate = (data.results ?? []).some(
+          (result) => mutating.includes(result.action) && !result.error
+        );
+
+        if (didMutate) onCheckInsChanged();
+      }
+    } catch (err) {
+      setError(err.message || "Could not reach the CareCue backend.");
+    } finally {
+      setSending(false);
+      inputRef.current?.focus();
     }
-  } catch (err) {
-    setError(err.message || "Could not reach the CareCue backend.");
-  } finally {
-    setSending(false);
-    inputRef.current?.focus();
   }
-}
-
-
 
 
   function handleKeyDown(e) {
@@ -286,9 +368,9 @@ async function send() {
   );
 }
 
-// ---------------------------------------------------------------------------
+
 // ActionResult — renders one entry from the results[] array
-// ---------------------------------------------------------------------------
+
 
 function ActionResult({ result }) {
   if (result.error) {
@@ -311,7 +393,10 @@ function ActionResult({ result }) {
           <div key={c.id} className="action-mini-item">
             <span className={"action-mini-dot action-mini-dot--" + c.status.toLowerCase()} />
             <span className="action-mini-name">{c.name}</span>
-            <span className="action-mini-meta">{c.person} &middot; {fmt24(c.time)}</span>
+            <span className="action-mini-meta">ID: {c.id}</span>
+            <span className="action-mini-meta">
+              {c.person} &middot; {String(c.time).match(/\b(AM|PM)\b/i) ? c.time : fmt24(c.time)}
+            </span>
             <span className={"status " + c.status.toLowerCase()}>{c.status}</span>
           </div>
         ))}
@@ -350,9 +435,8 @@ function ActionResult({ result }) {
   return null;
 }
 
-// ---------------------------------------------------------------------------
+
 // App
-// ---------------------------------------------------------------------------
 
 function App() {
   const [checkIns, setCheckIns] = useState([]);
@@ -630,7 +714,7 @@ function App() {
           </>
         )}
 
-        {/* ════════════════ CHAT TAB ════════════════ */}
+        {/*  CHAT TAB  */}
         {activeTab === "chat" && (
           <div className="chat-page">
             <div className="chat-page-header">

@@ -30,9 +30,9 @@
 const path     = require("path");
 const Database = require("better-sqlite3");
 
-// ---------------------------------------------------------------------------
+
 // Open / create the database
-// ---------------------------------------------------------------------------
+
 
 const DB_PATH = process.env.DB_PATH
   ? path.resolve(process.env.DB_PATH)
@@ -50,9 +50,9 @@ try {
 // Enable WAL mode for better concurrent read performance.
 db.pragma("journal_mode = WAL");
 
-// ---------------------------------------------------------------------------
+
 // Schema migration (idempotent)
-// ---------------------------------------------------------------------------
+
 
 db.exec(`
   CREATE TABLE IF NOT EXISTS checkins (
@@ -64,10 +64,10 @@ db.exec(`
   );
 `);
 
-// ---------------------------------------------------------------------------
+
 // Seed data
 // Inserted only when the table is empty (i.e. first run).
-// ---------------------------------------------------------------------------
+
 
 const SEED = [
   { id: 1, name: "Morning check-in",   person: "Dad", time: "09:00 AM", status: "Completed" },
@@ -90,9 +90,9 @@ if (isEmpty) {
   console.log("[CareCue DB] Database opened at " + DB_PATH + ".");
 }
 
-// ---------------------------------------------------------------------------
+
 // Prepared statements
-// ---------------------------------------------------------------------------
+
 
 const stmtGetAll    = db.prepare("SELECT * FROM checkins ORDER BY id");
 const stmtInsert    = db.prepare(
@@ -101,9 +101,9 @@ const stmtInsert    = db.prepare(
 const stmtFindById  = db.prepare("SELECT * FROM checkins WHERE id = ?");
 const stmtComplete  = db.prepare("UPDATE checkins SET status = 'Completed' WHERE id = ?");
 
-// ---------------------------------------------------------------------------
+
 // Public helpers
-// ---------------------------------------------------------------------------
+
 
 /**
  * Return all check-ins ordered by id.
